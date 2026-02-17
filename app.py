@@ -11,14 +11,35 @@ st.markdown("""
     [data-testid="stMetric"] {
         background-color: #ffffff;
         padding: 15px 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border: 1px solid #eee;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+        height: 120px;
     }
     
-    /* Progress Bar Color */
-    .stProgress > div > div > div > div {
-        background-color: #2ecc71;
+    /* Sentiment Card Custom Style */
+    .sentiment-card {
+        background-color: #ffffff;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .sentiment-title {
+        font-size: 0.8rem;
+        color: rgb(49, 51, 63);
+        margin-bottom: 8px;
+    }
+    
+    .sentiment-value {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 5px;
     }
 
     /* Pinterest Tiles */
@@ -50,16 +71,6 @@ st.markdown("""
         margin-bottom: 8px; 
     }
     .card-date { color: #ccc; font-size: 0.75rem; }
-    
-    /* Sentiment Section */
-    .sentiment-label {
-        font-size: 0.85rem;
-        font-weight: bold;
-        color: #555;
-        margin-bottom: 5px;
-        display: flex;
-        justify-content: space-between;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -88,31 +99,36 @@ try:
         selected_issue = st.selectbox("Select a Newsletter Issue:", newsletter_list)
     st.markdown("---")
 
-    # Full data for metrics
+    # Data filter
     issue_df = df[df['Newsletter'] == selected_issue]
     text_df = issue_df[issue_df['Comments'].notnull()].copy()
 
-    # --- ENHANCED METRICS SECTION ---
+    # Calculation
     total_fb = len(issue_df)
     good_count = len(issue_df[issue_df['Rating'] == "Good"])
-    sentiment_score = (good_count / total_fb) if total_fb > 0 else 0
+    sentiment_perc = (good_count / total_fb * 100) if total_fb > 0 else 0
     comments_shown = len(text_df)
 
+    # --- TOP METRICS ROW ---
     m1, m2, m3 = st.columns(3)
-    m1.metric("Total Votes", total_fb)
-    m2.metric("Good Ratings", f"{good_count}")
-    m3.metric("Comments to Read", comments_shown)
-
-    # --- SENTIMENT PROGRESS BAR ---
-    st.write("")
-    st.markdown(f"""
-        <div class="sentiment-label">
-            <span>Overall Sentiment (Good vs Total)</span>
-            <span>{sentiment_score*100:.1f}%</span>
-        </div>
-    """, unsafe_allow_html=True)
-    st.progress(sentiment_score)
     
+    with m1:
+        st.metric("Total Votes", total_fb)
+        
+    with m2:
+        # Custom HTML Card for Sentiment with Progress Bar
+        st.markdown(f"""
+            <div class="sentiment-card">
+                <div class="sentiment-title">Overall Sentiment (Good)</div>
+                <div class="sentiment-value">{sentiment_perc:.1f}%</div>
+            </div>
+        """, unsafe_allow_html=True)
+        # Progress bar immediately below the custom card text
+        st.progress(sentiment_perc / 100)
+        
+    with m3:
+        st.metric("Comments to Read", comments_shown)
+
     st.markdown("---")
 
     # --- PINTEREST TILES SECTION ---
