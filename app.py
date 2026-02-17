@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-# Page Configuration
+# Configurazione Pagina
 st.set_page_config(page_title="Gents Cafe Reader Feedback", layout="wide")
 
-# CSS "Scored" - Robusto e pulito
+# CSS per il design delle card e delle statistiche
 st.markdown("""
     <style>
     .metric-box {
@@ -39,11 +39,20 @@ st.title("☕ Gents Cafe Reader Feedback")
 @st.cache_data
 def load_data():
     file_name = "feedback.csv" 
+    # Carichiamo il file con i nomi colonne originali del tuo CSV
     df = pd.read_csv(file_name)
-    # Assicurati che la colonna con i titoli degli articoli si chiami 'Article Title' nel CSV
-    # Se ha un altro nome, cambialo qui sotto nell'elenco
-    df.columns = ['Newsletter', 'Archive', 'Created_time', 'Email_Metadata', 'Email', 'Rating', 'Suggestions', 'Comments', 'Article_Title']
-    df['Created_time'] = pd.to_datetime(df['Created_time'])
+    
+    # Rinominiamo solo le colonne che ci servono per comodità nel codice
+    df = df.rename(columns={
+        'Newsletter': 'Newsletter',
+        'Created time': 'Created_time',
+        'Essays': 'Article_Title',
+        "How did you like this week's issue?": 'Rating',
+        "While you're here, do you mind telling us why you chose that? (optional)": 'Comments'
+    })
+    
+    # Convertiamo la data in un formato leggibile
+    df['Created_time'] = pd.to_datetime(df['Created_time'], errors='coerce')
     return df
 
 try:
@@ -51,46 +60,51 @@ try:
 
     st.markdown("---")
     
-    # --- SEZIONE RICERCA DOPPIA ---
+    # --- SEZIONE DI RICERCA ---
     col_search1, col_search2 = st.columns(2)
     
+    # Prepariamo le liste per i menu a tendina
+    # Prendiamo i titoli unici dalla colonna Essays (Article_Title)
+    all_articles = sorted(df['Article_Title'].dropna().unique().tolist())
+    # Prendiamo le newsletter uniche
+    issue_list = df.sort_values('Created_time', ascending=False)['Newsletter'].unique().tolist()
+
     with col_search1:
-        # Ricerca per Titolo Articolo
-        all_articles = sorted(df['Article_Title'].dropna().unique().tolist())
-        selected_article = st.selectbox("Search by Article Title:", ["-- Select Article --"] + all_articles)
+        selected_article = st.selectbox("Cerca per Titolo Articolo:", ["-- Seleziona Articolo --"] + all_articles)
 
     with col_search2:
-        # Se un articolo è selezionato, pre-selezioniamo la newsletter corrispondente
-        if selected_article != "-- Select Article --":
-            default_issue = df[df['Article_Title'] == selected_article]['Newsletter'].iloc[0]
-            issue_list = df.sort_values('Created_time', ascending=False)['Newsletter'].unique().tolist()
-            # Troviamo l'indice della newsletter corretta
-            default_index = issue_list.index(default_issue)
-            selected_issue = st.selectbox("Newsletter Issue:", issue_list, index=default_index)
+        if selected_article != "-- Seleziona Articolo --":
+            # Trova la newsletter associata all'articolo scelto
+            matching_issue = df[df['Article_Title'] == selected_article]['Newsletter'].iloc[0]
+            try:
+                idx = issue_list.index(matching_issue)
+                selected_issue = st.selectbox("Newsletter associata:", issue_list, index=idx)
+            except:
+                selected_issue = st.selectbox("Seleziona Newsletter:", issue_list)
         else:
-            issue_list = df.sort_values('Created_time', ascending=False)['Newsletter'].unique().tolist()
-            selected_issue = st.selectbox("Or select by Issue Number:", issue_list)
+            selected_issue = st.selectbox("Oppure seleziona per Numero Issue:", issue_list)
 
     st.markdown("---")
 
-    # Filtri Dati
+    # Filtriamo i dati per la newsletter selezionata
     issue_df = df[df['Newsletter'] == selected_issue]
+    # Filtriamo solo i feedback che hanno un commento scritto
     text_df = issue_df[issue_df['Comments'].notnull()].copy()
 
-    # Calcoli Sentiment
+    # Calcoli per il Sentiment
     total = len(issue_df)
     def get_count(label):
-        return len(issue_df[issue_df['Rating'].str.contains(label, case=False, na=False)])
+        return len(issue_df[issue_df['Rating'].astype(str).str.contains(label, case=False, na=False)])
     
     g_c, m_c, b_c = get_count('Good'), get_count('Meh'), get_count('bad')
     g_p = (g_c/total*100) if total > 0 else 0
     m_p = (m_c/total*100) if total > 0 else 0
     b_p = (b_c/total*100) if total > 0 else 0
 
-    # --- TOP ROW (STATISTICHE) ---
+    # --- RIGA SUPERIORE: STATISTICHE ---
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown(f'<div class="metric-box"><div class="metric-title">Total Votes</div><div class="metric-value">{total}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-box"><div class="metric-title">Voti Totali</div><div class="metric-value">{total}</div></div>', unsafe_allow_html=True)
     with c2:
         st.markdown(f"""
         <div class="metric-box">
@@ -110,34 +124,38 @@ try:
         </div>
         """, unsafe_allow_html=True)
     with c3:
-        st.markdown(f'<div class="metric-box"><div class="metric-title">Comments</div><div class="metric-value">{len(text_df)}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-box"><div class="metric-title">Commenti</div><div class="metric-value">{len(text_df)}</div></div>', unsafe_allow_html=True)
 
-    # --- TILES ---
-    st.subheader(f"Comments for: {selected_issue}")
+    # --- SEZIONE FEEDBACK (TILE) ---
+    st.subheader(f"Commenti per: {selected_issue}")
     
-    # Mostriamo quali articoli sono contenuti in questa newsletter (per conferma)
+    # Mostriamo quali articoli sono presenti in questa newsletter
     current_articles = issue_df['Article_Title'].dropna().unique().tolist()
     if current_articles:
-        st.caption(f"Articles in this issue: {', '.join(current_articles)}")
+        st.caption(f"Articoli in questa edizione: {', '.join(current_articles)}")
 
     if len(text_df) == 0:
-        st.info("No comments for this issue.")
+        st.info("Nessun commento scritto per questa edizione (solo voti).")
     else:
         t_cols = st.columns(3)
         for i, (idx, row) in enumerate(text_df.iterrows()):
             r_str = str(row['Rating']).strip().capitalize()
-            cls = "rating-good" if "Good" in r_str else ("rating-meh" if "Meh" in r_str else "rating-bad")
+            # Identifichiamo il colore in base al rating
+            if "Good" in r_str: cls = "rating-good"
+            elif "Meh" in r_str: cls = "rating-meh"
+            else: cls = "rating-bad"
+            
             tile = f"""
             <div class="feedback-card {cls}">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <span style="font-weight:800; font-size:0.7rem;">{r_str.upper()}</span>
-                    <span style="color:#ccc; font-size:0.7rem;">{row['Created_time'].strftime('%d %b %Y')}</span>
+                    <span style="color:#ccc; font-size:0.7rem;">{row['Created_time'].strftime('%d %b %Y') if pd.notnull(row['Created_time']) else ''}</span>
                 </div>
-                <div class="insight-label">Reader Insight:</div>
+                <div class="insight-label">Feedback del lettore:</div>
                 <div class="quote">"{row['Comments']}"</div>
             </div>
             """
             t_cols[i % 3].markdown(tile, unsafe_allow_html=True)
 
 except Exception as e:
-    st.error(f"Error: {e}")
+    st.error(f"Si è verificato un errore: {e}")
