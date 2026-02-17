@@ -14,7 +14,10 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
-        height: 120px;
+        height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     
     /* Sentiment Card Custom Style */
@@ -24,22 +27,37 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
-        height: 120px;
+        height: 150px;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
     }
     
     .sentiment-title {
         font-size: 0.8rem;
         color: rgb(49, 51, 63);
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    /* Custom Progress Bars */
+    .bar-container {
+        width: 100%;
+        background-color: #f0f0f0;
+        border-radius: 5px;
+        height: 8px;
         margin-bottom: 8px;
     }
-    
-    .sentiment-value {
-        font-size: 1.8rem;
-        font-weight: 600;
-        margin-bottom: 5px;
+    .bar-fill {
+        height: 100%;
+        border-radius: 5px;
+    }
+    .bar-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        margin-bottom: 2px;
+        color: #666;
     }
 
     /* Pinterest Tiles */
@@ -63,13 +81,7 @@ st.markdown("""
         font-size: 1.1rem; 
         line-height: 1.6; 
     }
-    .label { 
-        font-size: 0.7rem; 
-        color: #aaa; 
-        text-transform: uppercase; 
-        letter-spacing: 1.2px; 
-        margin-bottom: 8px; 
-    }
+    .label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px; }
     .card-date { color: #ccc; font-size: 0.75rem; }
     </style>
     """, unsafe_allow_html=True)
@@ -105,8 +117,14 @@ try:
 
     # Calculation
     total_fb = len(issue_df)
-    good_count = len(issue_df[issue_df['Rating'] == "Good"])
-    sentiment_perc = (good_count / total_fb * 100) if total_fb > 0 else 0
+    good_count = len(issue_df[issue_df['Rating'].str.lower() == "good"])
+    meh_count = len(issue_df[issue_df['Rating'].str.lower() == "meh"])
+    bad_count = len(issue_df[issue_df['Rating'].str.lower() == "bad"])
+    
+    good_perc = (good_count / total_fb * 100) if total_fb > 0 else 0
+    meh_perc = (meh_count / total_fb * 100) if total_fb > 0 else 0
+    bad_perc = (bad_count / total_fb * 100) if total_fb > 0 else 0
+    
     comments_shown = len(text_df)
 
     # --- TOP METRICS ROW ---
@@ -116,15 +134,23 @@ try:
         st.metric("Total Votes", total_fb)
         
     with m2:
-        # Custom HTML Card for Sentiment with Progress Bar
+        # Custom HTML Card with 3 Bars
         st.markdown(f"""
             <div class="sentiment-card">
-                <div class="sentiment-title">Overall Sentiment (Good)</div>
-                <div class="sentiment-value">{sentiment_perc:.1f}%</div>
+                <div class="sentiment-title">Newsletter Sentiment</div>
+                
+                <div>
+                    <div class="bar-label"><span>Good</span><span>{good_perc:.1f}%</span></div>
+                    <div class="bar-container"><div class="bar-fill" style="width: {good_perc}%; background-color: #2ecc71;"></div></div>
+                    
+                    <div class="bar-label"><span>Meh</span><span>{meh_perc:.1f}%</span></div>
+                    <div class="bar-container"><div class="bar-fill" style="width: {meh_perc}%; background-color: #f1c40f;"></div></div>
+                    
+                    <div class="bar-label"><span>Bad</span><span>{bad_perc:.1f}%</span></div>
+                    <div class="bar-container"><div class="bar-fill" style="width: {bad_perc}%; background-color: #e74c3c;"></div></div>
+                </div>
             </div>
         """, unsafe_allow_html=True)
-        # Progress bar immediately below the custom card text
-        st.progress(sentiment_perc / 100)
         
     with m3:
         st.metric("Comments to Read", comments_shown)
@@ -140,7 +166,7 @@ try:
         cols = st.columns(3)
         for i, (index, row) in enumerate(text_df.iterrows()):
             col_index = i % 3
-            r = str(row['Rating']).strip()
+            r = str(row['Rating']).strip().capitalize()
             rating_class = "rating-good" if r == "Good" else ("rating-meh" if r == "Meh" else "rating-bad")
             comment = row['Comments']
             date_str = row['Created_time'].strftime('%d %b %Y')
