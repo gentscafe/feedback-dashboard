@@ -10,11 +10,11 @@ st.markdown("""
     /* Metric Cards */
     [data-testid="stMetric"] {
         background-color: #ffffff;
-        padding: 15px 20px;
+        padding: 15px 20px !important;
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
-        height: 150px;
+        height: 160px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -27,37 +27,42 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 1px solid #f0f0f0;
-        height: 150px;
+        height: 160px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: center;
     }
     
     .sentiment-title {
         font-size: 0.8rem;
         color: rgb(49, 51, 63);
-        margin-bottom: 5px;
+        margin-bottom: 12px;
         font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
-    /* Custom Progress Bars */
+    /* Custom Progress Bars Layout */
+    .bar-wrapper {
+        margin-bottom: 8px;
+    }
     .bar-container {
         width: 100%;
         background-color: #f0f0f0;
-        border-radius: 5px;
-        height: 8px;
-        margin-bottom: 8px;
+        border-radius: 10px;
+        height: 6px;
     }
     .bar-fill {
         height: 100%;
-        border-radius: 5px;
+        border-radius: 10px;
     }
     .bar-label {
         display: flex;
         justify-content: space-between;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         margin-bottom: 2px;
-        color: #666;
+        color: #444;
+        font-weight: 600;
     }
 
     /* Pinterest Tiles */
@@ -92,6 +97,7 @@ st.title("☕ Gents Cafe Reader Feedback")
 def load_data():
     file_name = "feedback.csv" 
     df = pd.read_csv(file_name)
+    # Mapping exact column names based on your file
     df.columns = [
         'Newsletter', 'Archive', 'Created_time', 'Email_Metadata', 'Email', 
         'Rating', 'Suggestions', 'Comments'
@@ -117,9 +123,10 @@ try:
 
     # Calculation
     total_fb = len(issue_df)
-    good_count = len(issue_df[issue_df['Rating'].str.lower() == "good"])
-    meh_count = len(issue_df[issue_df['Rating'].str.lower() == "meh"])
-    bad_count = len(issue_df[issue_df['Rating'].str.lower() == "bad"])
+    # We use a case-insensitive check to be safe
+    good_count = len(issue_df[issue_df['Rating'].str.contains('Good', case=False, na=False)])
+    meh_count = len(issue_df[issue_df['Rating'].str.contains('Meh', case=False, na=False)])
+    bad_count = len(issue_df[issue_df['Rating'].str.contains('bad', case=False, na=False)])
     
     good_perc = (good_count / total_fb * 100) if total_fb > 0 else 0
     meh_perc = (meh_count / total_fb * 100) if total_fb > 0 else 0
@@ -134,19 +141,23 @@ try:
         st.metric("Total Votes", total_fb)
         
     with m2:
-        # Custom HTML Card with 3 Bars
+        # Custom HTML Card with Fixed Layout and aligned bars
         st.markdown(f"""
             <div class="sentiment-card">
-                <div class="sentiment-title">Newsletter Sentiment</div>
+                <div class="sentiment-title">Sentiment Breakdown</div>
                 
-                <div>
-                    <div class="bar-label"><span>Good</span><span>{good_perc:.1f}%</span></div>
+                <div class="bar-wrapper">
+                    <div class="bar-label"><span>GOOD</span><span>{good_perc:.1f}%</span></div>
                     <div class="bar-container"><div class="bar-fill" style="width: {good_perc}%; background-color: #2ecc71;"></div></div>
-                    
-                    <div class="bar-label"><span>Meh</span><span>{meh_perc:.1f}%</span></div>
+                </div>
+                
+                <div class="bar-wrapper">
+                    <div class="bar-label"><span>MEH</span><span>{meh_perc:.1f}%</span></div>
                     <div class="bar-container"><div class="bar-fill" style="width: {meh_perc}%; background-color: #f1c40f;"></div></div>
-                    
-                    <div class="bar-label"><span>Bad</span><span>{bad_perc:.1f}%</span></div>
+                </div>
+                
+                <div class="bar-wrapper">
+                    <div class="bar-label"><span>BAD</span><span>{bad_perc:.1f}%</span></div>
                     <div class="bar-container"><div class="bar-fill" style="width: {bad_perc}%; background-color: #e74c3c;"></div></div>
                 </div>
             </div>
@@ -167,7 +178,7 @@ try:
         for i, (index, row) in enumerate(text_df.iterrows()):
             col_index = i % 3
             r = str(row['Rating']).strip().capitalize()
-            rating_class = "rating-good" if r == "Good" else ("rating-meh" if r == "Meh" else "rating-bad")
+            rating_class = "rating-good" if "Good" in r else ("rating-meh" if "Meh" in r else "rating-bad")
             comment = row['Comments']
             date_str = row['Created_time'].strftime('%d %b %Y')
 
