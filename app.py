@@ -69,4 +69,43 @@ try:
 
     st.write("") 
 
-    # ---
+    # --- PINTEREST TILES SECTION ---
+    st.subheader(f"Detailed Feedback for: {selected_issue}")
+
+    if written_count == 0:
+        st.info("No detailed written feedback for this issue yet.")
+    else:
+        # Creating 3 columns for the Pinterest-like grid
+        cols = st.columns(3)
+        
+        # We iterate through the rows and distribute them across columns
+        for i, (index, row) in enumerate(text_df.iterrows()):
+            col_index = i % 3  # This cycles through 0, 1, 2
+            
+            r = str(row['Rating']).strip()
+            rating_class = "rating-good" if r == "Good" else ("rating-meh" if r == "Meh" else "rating-bad")
+            
+            comment = row['Comments'] if pd.notnull(row['Comments']) else ""
+            suggestion = row['Suggestions'] if pd.notnull(row['Suggestions']) else ""
+            date_str = row['Created_time'].strftime('%d %b %Y')
+
+            # Building the Tile HTML
+            tile_html = f"""
+            <div class="feedback-card {rating_class}">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: bold; font-size: 0.8rem;">{r.upper()}</span>
+                    <span class="card-date">{date_str}</span>
+                </div>
+            """
+            if comment:
+                tile_html += f'<div class="feedback-text"><div class="label">Why they chose this:</div>"{comment}"</div>'
+            if suggestion:
+                tile_html += f'<div class="feedback-text"><div class="label">Suggestions:</div><div class="suggestion-text">{suggestion}</div></div>'
+            
+            tile_html += "</div>"
+            
+            # Place the tile in the correct column
+            cols[col_index].markdown(tile_html, unsafe_allow_html=True)
+
+except Exception as e:
+    st.error(f"Error: {e}")
