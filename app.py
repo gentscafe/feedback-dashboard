@@ -4,9 +4,24 @@ import pandas as pd
 # Page Configuration
 st.set_page_config(page_title="Gents Cafe Reader Feedback", layout="wide")
 
-# Custom CSS for Pinterest-style layout (Focus on Comments)
+# Custom CSS for Premium Design
 st.markdown("""
     <style>
+    /* Metric Cards */
+    [data-testid="stMetric"] {
+        background-color: #ffffff;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #eee;
+    }
+    
+    /* Progress Bar Color */
+    .stProgress > div > div > div > div {
+        background-color: #2ecc71;
+    }
+
+    /* Pinterest Tiles */
     .feedback-card {
         background-color: #ffffff;
         border-radius: 12px;
@@ -18,6 +33,7 @@ st.markdown("""
     .rating-good { border-top-color: #2ecc71; }
     .rating-meh { border-top-color: #f1c40f; }
     .rating-bad { border-top-color: #e74c3c; }
+    
     .feedback-text { 
         font-family: 'Georgia', serif;
         font-style: italic; 
@@ -34,6 +50,16 @@ st.markdown("""
         margin-bottom: 8px; 
     }
     .card-date { color: #ccc; font-size: 0.75rem; }
+    
+    /* Sentiment Section */
+    .sentiment-label {
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -64,21 +90,30 @@ try:
 
     # Full data for metrics
     issue_df = df[df['Newsletter'] == selected_issue]
-    
-    # FILTER: Only feedbacks that have a COMMENT
     text_df = issue_df[issue_df['Comments'].notnull()].copy()
 
-    # --- METRICS ---
-    col1, col2, col3 = st.columns(3)
+    # --- ENHANCED METRICS SECTION ---
     total_fb = len(issue_df)
     good_count = len(issue_df[issue_df['Rating'] == "Good"])
+    sentiment_score = (good_count / total_fb) if total_fb > 0 else 0
     comments_shown = len(text_df)
-    
-    col1.metric("Total Feedbacks", total_fb)
-    col2.metric("Positive Ratings", f"{good_count} (Good)")
-    col3.metric("Comments to Read", comments_shown)
 
-    st.write("") 
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Votes", total_fb)
+    m2.metric("Good Ratings", f"{good_count}")
+    m3.metric("Comments to Read", comments_shown)
+
+    # --- SENTIMENT PROGRESS BAR ---
+    st.write("")
+    st.markdown(f"""
+        <div class="sentiment-label">
+            <span>Overall Sentiment (Good vs Total)</span>
+            <span>{sentiment_score*100:.1f}%</span>
+        </div>
+    """, unsafe_allow_html=True)
+    st.progress(sentiment_score)
+    
+    st.markdown("---")
 
     # --- PINTEREST TILES SECTION ---
     st.subheader(f"Direct Reader Comments: {selected_issue}")
@@ -86,19 +121,14 @@ try:
     if comments_shown == 0:
         st.info("No written comments found for this issue (only ratings).")
     else:
-        # 3-column layout
         cols = st.columns(3)
-        
         for i, (index, row) in enumerate(text_df.iterrows()):
             col_index = i % 3
-            
             r = str(row['Rating']).strip()
             rating_class = "rating-good" if r == "Good" else ("rating-meh" if r == "Meh" else "rating-bad")
-            
             comment = row['Comments']
             date_str = row['Created_time'].strftime('%d %b %Y')
 
-            # Build Tile HTML
             tile_html = f"""
             <div class="feedback-card {rating_class}">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
