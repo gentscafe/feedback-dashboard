@@ -64,4 +64,41 @@ try:
     st.write("") 
 
     # --- TILES SECTION ---
-    st.subheader(f"What
+    st.subheader(f"Insights for: {selected_issue}")
+
+    if total_fb == 0:
+        st.info("No feedback found for this issue.")
+    else:
+        for index, row in filtered_df.iterrows():
+            # Determine color class
+            r = str(row['Rating']).strip()
+            if r == "Good":
+                rating_class = "rating-good"
+            elif r == "Meh":
+                rating_class = "rating-meh"
+            else:
+                rating_class = "rating-bad"
+            
+            # Formatting strings for HTML to avoid breaks
+            comment = row['Comments'] if pd.notnull(row['Comments']) else ""
+            suggestion = row['Suggestions'] if pd.notnull(row['Suggestions']) else ""
+            date_str = row['Created_time'].strftime('%d %b %Y')
+
+            # Create Tile using a cleaner approach
+            tile_html = f"""
+            <div class="feedback-card {rating_class}">
+                <div style="display: flex; justify-content: space-between;">
+                    <span><strong>Rating: {r}</strong></span>
+                    <span style="color: #888; font-size: 0.8rem;">{date_str}</span>
+                </div>
+            """
+            if comment:
+                tile_html += f'<div class="feedback-text"><div class="label">Why they chose this:</div>"{comment}"</div>'
+            if suggestion:
+                tile_html += f'<div class="feedback-text"><div class="label">Suggestions:</div><span class="suggestion-text">{suggestion}</span></div>'
+            
+            tile_html += "</div>"
+            st.markdown(tile_html, unsafe_allow_html=True)
+
+except Exception as e:
+    st.error(f"Error: {e}")
