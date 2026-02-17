@@ -4,23 +4,25 @@ import pandas as pd
 # Page Configuration
 st.set_page_config(page_title="Gents Cafe Reader Feedback", layout="wide")
 
-# Custom CSS for modern Tiles (Cards)
+# Custom CSS for Pinterest-style layout
 st.markdown("""
     <style>
     .feedback-card {
-        background-color: #f9f9f9;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 15px;
-        border-left: 5px solid #333;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 20px;
+        border-top: 6px solid #333;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        min-height: 100px;
     }
-    .rating-good { border-left-color: #2ecc71; }
-    .rating-meh { border-left-color: #f1c40f; }
-    .rating-bad { border-left-color: #e74c3c; }
-    .feedback-text { font-style: italic; color: #444; margin-top: 10px; }
-    .suggestion-text { font-weight: bold; color: #222; }
-    .label { font-size: 0.8rem; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+    .rating-good { border-top-color: #2ecc71; }
+    .rating-meh { border-top-color: #f1c40f; }
+    .rating-bad { border-top-color: #e74c3c; }
+    .feedback-text { font-style: italic; color: #444; margin-top: 12px; font-size: 0.95rem; line-height: 1.4; }
+    .suggestion-text { font-weight: bold; color: #222; margin-top: 5px; }
+    .label { font-size: 0.7rem; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+    .card-date { color: #bbb; font-size: 0.75rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -49,56 +51,22 @@ try:
         selected_issue = st.selectbox("Select a Newsletter Issue:", newsletter_list)
     st.markdown("---")
 
-    filtered_df = df[df['Newsletter'] == selected_issue]
+    # Data for the metrics (all feedbacks)
+    issue_df = df[df['Newsletter'] == selected_issue]
+    
+    # Data for the Tiles (only with text)
+    text_df = issue_df[issue_df['Comments'].notnull() | issue_df['Suggestions'].notnull()].copy()
 
     # --- METRICS ---
     col1, col2, col3 = st.columns(3)
-    total_fb = len(filtered_df)
-    good_count = len(filtered_df[filtered_df['Rating'] == "Good"])
-    comment_count = filtered_df['Comments'].dropna().count() + filtered_df['Suggestions'].dropna().count()
+    total_fb = len(issue_df)
+    good_count = len(issue_df[issue_df['Rating'] == "Good"])
+    written_count = len(text_df)
     
     col1.metric("Total Feedbacks", total_fb)
     col2.metric("Positive Ratings", f"{good_count} (Good)")
-    col3.metric("Written Comments", int(comment_count))
+    col3.metric("Feedback with Comments", written_count)
 
     st.write("") 
 
-    # --- TILES SECTION ---
-    st.subheader(f"Insights for: {selected_issue}")
-
-    if total_fb == 0:
-        st.info("No feedback found for this issue.")
-    else:
-        for index, row in filtered_df.iterrows():
-            # Determine color class
-            r = str(row['Rating']).strip()
-            if r == "Good":
-                rating_class = "rating-good"
-            elif r == "Meh":
-                rating_class = "rating-meh"
-            else:
-                rating_class = "rating-bad"
-            
-            # Formatting strings for HTML to avoid breaks
-            comment = row['Comments'] if pd.notnull(row['Comments']) else ""
-            suggestion = row['Suggestions'] if pd.notnull(row['Suggestions']) else ""
-            date_str = row['Created_time'].strftime('%d %b %Y')
-
-            # Create Tile using a cleaner approach
-            tile_html = f"""
-            <div class="feedback-card {rating_class}">
-                <div style="display: flex; justify-content: space-between;">
-                    <span><strong>Rating: {r}</strong></span>
-                    <span style="color: #888; font-size: 0.8rem;">{date_str}</span>
-                </div>
-            """
-            if comment:
-                tile_html += f'<div class="feedback-text"><div class="label">Why they chose this:</div>"{comment}"</div>'
-            if suggestion:
-                tile_html += f'<div class="feedback-text"><div class="label">Suggestions:</div><span class="suggestion-text">{suggestion}</span></div>'
-            
-            tile_html += "</div>"
-            st.markdown(tile_html, unsafe_allow_html=True)
-
-except Exception as e:
-    st.error(f"Error: {e}")
+    # ---
